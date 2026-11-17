@@ -18,8 +18,11 @@ public class ApiController {
   @GetMapping("/matches") public List<Map<String,Object>> matches(org.springframework.security.core.Authentication a) { return service.matches(current(a)); }
   @GetMapping("/students") public List<Map<String,Object>> students(@RequestParam(required=false) String q, org.springframework.security.core.Authentication a) { return service.search(q, current(a)); }
   @GetMapping("/sessions") public List<Map<String,Object>> sessions(@RequestParam(defaultValue="ALL") String filter, org.springframework.security.core.Authentication a) { return service.sessions(current(a), filter); }
+  @GetMapping("/offers") public List<Map<String,Object>> offers(org.springframework.security.core.Authentication a) { return service.offers(current(a)); }
   @PostMapping("/sessions") @ResponseStatus(HttpStatus.CREATED) public Map<String,Object> create(@RequestBody CreateSession request, org.springframework.security.core.Authentication a) { return service.createSession(current(a), request.teacherId(), request.skillId(), request.startsAt(), request.durationMinutes(), request.notes()); }
+  @PostMapping("/offers") @ResponseStatus(HttpStatus.CREATED) public Map<String,Object> createOffer(@RequestBody CreateOffer request, org.springframework.security.core.Authentication a) { return service.createOffer(current(a), request.skillId(), request.startsAt(), request.durationMinutes(), request.notes()); }
   @PostMapping("/sessions/{id}/complete") @ResponseStatus(HttpStatus.NO_CONTENT) public void complete(@PathVariable UUID id, org.springframework.security.core.Authentication a) { service.completeSession(current(a), id); }
   @PostMapping("/sessions/{id}/accept") @ResponseStatus(HttpStatus.NO_CONTENT) public void accept(@PathVariable UUID id, org.springframework.security.core.Authentication a) { service.acceptSession(current(a), id); }
   public record CreateSession(UUID teacherId, UUID skillId, OffsetDateTime startsAt, int durationMinutes, String notes) {}
+  public record CreateOffer(UUID skillId, OffsetDateTime startsAt, int durationMinutes, String notes) {}
 }

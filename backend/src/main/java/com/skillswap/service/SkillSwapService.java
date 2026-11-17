@@ -56,9 +56,24 @@ public class SkillSwapService {
   public List<Map<String,Object>> sessions(UUID id, String filter) {
     return db.queryForList("SELECT e.id,e.teacher_id,e.learner_id,e.starts_at,e.duration_minutes,e.status,e.notes,s.name AS skill,teacher.display_name AS teacher,learner.display_name AS learner FROM exchange_session e JOIN skill s ON s.id=e.skill_id JOIN app_user teacher ON teacher.id=e.teacher_id JOIN app_user learner ON learner.id=e.learner_id WHERE (e.teacher_id=? OR e.learner_id=?) AND (?='ALL' OR (?='UPCOMING' AND e.starts_at>=now() AND e.status IN ('REQUESTED','ACCEPTED')) OR (?='PAST' AND (e.starts_at<now() OR e.status IN ('COMPLETED','CANCELLED','REJECTED')))) ORDER BY e.starts_at", id.toString(), id.toString(), filter, filter, filter);
   }
+  public List<Map<String,Object>> offers(UUID teacher) {
+    return db.queryForList("SELECT o.id,o.teacher_id,o.skill_id,o.starts_at,o.duration_minutes,o.status,o.notes,s.name AS skill FROM session_offer o JOIN skill s ON s.id=o.skill_id WHERE o.teacher_id=? ORDER BY o.starts_at", teacher.toString());
+  }
+  @Transactional public Map<String,Object> createOffer(UUID teacher, UUID skill, OffsetDateTime startsAt, int duration, String notes) {
+    validateSessionTime(startsAt, duration);
+    if (db.queryForObject("SELECT COUNT(*) FROM user_skill WHERE user_id=? AND skill_id=? AND direction='OFFER'", Integer.class, teacher.toString(), skill.toString()) == 0)
+      throw new IllegalArgumentException("You can only teach skills listed in your offered skills");
+    var id = UUID.randomUUID().toString();
+    db.update("INSERT INTO session_offer(id,teacher_id,skill_id,starts_at,duration_minutes,status,notes) VALUES (?,?,?,?,?,?,?)", id, teacher.toString(), skill.toString(), startsAt.toLocalDateTime(), duration, "AVAILABLE", notes);
+    return db.queryForMap("SELECT id,teacher_id,skill_id,starts_at,duration_minutes,status,notes FROM session_offer WHERE id=?", id);
+  }
+  private void validateSessionTime(OffsetDateTime startsAt, int duration) {
+    if (startsAt == null || startsAt.isBefore(OffsetDateTime.now())) throw new IllegalArgumentException("Session must be in the future");
+    if (!Set.of(30, 60, 90, 120).contains(duration)) throw new IllegalArgumentException("Duration must be 30, 60, 90, or 120 minutes");
+  }
   @Transactional public Map<String,Object> createSession(UUID learner, UUID teacher, UUID skill, OffsetDateTime startsAt, int duration, String notes) {
     if (learner.equals(teacher)) throw new IllegalArgumentException("You cannot book a session with yourself");
-    if (startsAt.isBefore(OffsetDateTime.now())) throw new IllegalArgumentException("Session must be in the future");
+    validateSessionTime(startsAt, duration);
     var cost = duration / 30; var credits = ((Number) db.queryForObject("SELECT credits FROM app_user WHERE id=?", Integer.class, learner.toString())).intValue();
     if (credits < cost) throw new IllegalArgumentException("Not enough available credits");
     var id = UUID.randomUUID();
