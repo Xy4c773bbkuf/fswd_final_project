@@ -1,0 +1,18 @@
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
+
+# Backend build output
+backend/target/
+
+# Local environment and IDE files
+.env
+.env.*
+!.env.example
+.vscode/
+*.iml
+
+# Logs and local runtime files
+*.log
+coverage/
